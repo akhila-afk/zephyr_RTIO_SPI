@@ -28,8 +28,6 @@ int scl3300_spi_write(const struct device *dev, uint32_t command);
  *
  * @return 0 on successful submission, or a negative error code.
  */
-int scl3300_spi_read(const struct device *dev,
-                           struct rtio_iodev_sqe *iodev_sqe,
-                           uint32_t command);
+int scl3300_spi_read(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe, uint32_t command);
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_SCL3300_SCL3300_SPI_H_ */
