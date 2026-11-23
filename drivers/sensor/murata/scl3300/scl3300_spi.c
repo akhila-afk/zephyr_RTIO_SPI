@@ -4,6 +4,7 @@
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/rtio/rtio.h>
+#include <zephyr/sys/byteorder.h>
 
 #include "scl3300_spi.h"
 
@@ -12,84 +13,74 @@ LOG_MODULE_REGISTER(scl3300_spi, CONFIG_SENSOR_LOG_LEVEL);
 #define SCL3300_SPI_FRAME_SIZE 4U
 
 static int scl3300_spi_transceive_sync(const struct device *dev, uint32_t command, uint8_t *rx_buf,
-				       size_t rx_buf_size)
+				       size_t len)
 {
-	const struct scl3300_config *dev_cfg = dev->config;
+	const struct scl3300_config *cfg = dev->config;
 	struct scl3300_data *data = dev->data;
+	uint8_t tx_buf[SCL3300_SPI_FRAME_SIZE];
+	int ret;
 
-	if (rx_buf == NULL || rx_buf_size < SCL3300_SPI_FRAME_SIZE) {
+	if (cfg == NULL || data == NULL || rx_buf == NULL) {
 		return -EINVAL;
 	}
 
-	LOG_INF("Submitting SPI command: 0x%08x", command);
-
-	data->tx_buf[0] = (uint8_t)(command >> 24);
-	data->tx_buf[1] = (uint8_t)(command >> 16);
-	data->tx_buf[2] = (uint8_t)(command >> 8);
-	data->tx_buf[3] = (uint8_t)command;
-
-	memset(rx_buf, 0, SCL3300_SPI_FRAME_SIZE);
-
+	sys_put_be32(command, tx_buf);
 	struct rtio_sqe *sqe;
 
 	sqe = rtio_sqe_acquire(data->rtio);
 	if (sqe == NULL) {
-		LOG_INF("Failed to acquire RTIO SQE");
 		return -ENOMEM;
 	}
 
-	rtio_sqe_prep_transceive(sqe, dev_cfg->spi_iodev, RTIO_PRIO_NORM, data->tx_buf, rx_buf,
-				 SCL3300_SPI_FRAME_SIZE, data);
+	rtio_sqe_prep_transceive(sqe, cfg->spi_iodev, RTIO_PRIO_NORM, tx_buf, rx_buf, len, data);
 
-	int ret = rtio_submit(data->rtio, 0);
-
+	ret = rtio_submit(data->rtio, 0);
 	if (ret < 0) {
-		LOG_INF("RTIO submission failed: %d", ret);
 		return ret;
 	}
-
 	struct rtio_cqe *cqe;
 
 	cqe = rtio_cqe_consume_block(data->rtio);
 	if (cqe == NULL) {
-		LOG_INF("Failed to consume RTIO CQE");
 		return -EIO;
 	}
 
 	ret = cqe->result;
 	rtio_cqe_release(data->rtio, cqe);
 
-	if (ret < 0) {
-		LOG_INF("SPI transaction failed: %d", ret);
-		return ret;
-	}
-
-	return 0;
+	return ret;
 }
 
-int scl3300_spi_write(const struct device *dev, uint32_t command)
+int scl3300_spi_read_command(const struct device *dev, uint32_t command)
+{
+	uint8_t rx_buf[SCL3300_SPI_FRAME_SIZE];
+
+	return scl3300_spi_transceive_sync(dev, command, rx_buf, SCL3300_SPI_FRAME_SIZE);
+}
+
+int scl3300_spi_write_command(const struct device *dev, uint32_t command)
+{
+	uint8_t rx_buf[SCL3300_SPI_FRAME_SIZE];
+
+	LOG_INF("Submitting SPI command: 0x%08x", command);
+
+	return scl3300_spi_transceive_sync(dev, command, rx_buf, SCL3300_SPI_FRAME_SIZE);
+}
+
+int scl3300_spi_init(const struct device *dev)
 {
 	struct scl3300_data *data = dev->data;
+	const struct scl3300_config *cfg = dev->config;
 
-	return scl3300_spi_transceive_sync(dev, command, data->rx_buf, sizeof(data->rx_buf));
-}
-
-int scl3300_spi_read(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe, uint32_t command)
-{
-	uint32_t rx_buf_len;
-	uint8_t *rx_buf;
-
-	int ret = rtio_sqe_rx_buf(iodev_sqe, SCL3300_SPI_FRAME_SIZE, SCL3300_SPI_FRAME_SIZE,
-				  &rx_buf, &rx_buf_len);
-	if (ret < 0) {
-		LOG_INF("Failed to allocate RTIO RX buffer: %d", ret);
-		return ret;
+	if (!spi_is_ready_iodev(cfg->spi_iodev)) {
+		return -ENODEV;
 	}
 
-	if (rx_buf_len < SCL3300_SPI_FRAME_SIZE) {
-		LOG_INF("RTIO RX buffer is too small: %u", rx_buf_len);
-		return -ENOMEM;
-	}
+	data->ctx_spi.read = (scl3300_read_ptr)scl3300_spi_read_command;
+	data->ctx_spi.write = (scl3300_write_ptr)scl3300_spi_write_command;
 
-	return scl3300_spi_transceive_sync(dev, command, rx_buf, rx_buf_len);
+	data->ctx = &data->ctx_spi;
+	data->ctx->handle = (void *)dev;
+
+	return 0;
 }

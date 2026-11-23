@@ -18,6 +18,7 @@ SPI_DT_IODEV_DEFINE(scl3300_spi_iodev, DT_DRV_INST(0), SPI_WORD_SET(8) | SPI_TRA
 
 static const struct scl3300_config scl3300_config = {
 	.spi_iodev = &scl3300_spi_iodev,
+	.bus_init = scl3300_spi_init,
 	.init = DT_INST_PROP_OR(0, init, 0),
 };
 
@@ -32,39 +33,44 @@ static struct scl3300_data scl3300_data = {
 	.rtio = &scl3300_rtio,
 };
 
-static void scl3300_submit(const struct device *dev, struct rtio_iodev_sqe *iodev_sqe)
+static int scl3300_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
-	int ret;
+	struct scl3300_data *data = dev->data;
 
-	ret = scl3300_spi_read(dev, iodev_sqe, SCL3300_CMD_READ_ANG_X);
+	switch (chan) {
+	case SENSOR_CHAN_ALL:
+	case SENSOR_CHAN_ACCEL_XYZ:
+		return scl3300_transport_read(data->ctx, SCL3300_CMD_READ_ANG_X);
 
-	if (ret < 0) {
-		LOG_ERR("SPI read failed: %d", ret);
-		rtio_iodev_sqe_err(iodev_sqe, ret);
-		return;
+	default:
+		return -ENOTSUP;
 	}
-
-	rtio_iodev_sqe_ok(iodev_sqe, 0);
 }
 
 static int scl3300_configure(const struct device *dev, const struct scl3300_config *cfg)
 {
+	struct scl3300_data *data = dev->data;
 	int ret;
 
-	ret = scl3300_spi_write(dev, SCL3300_CMD_WHOAMI);
+	if ((data == NULL) || (data->ctx == NULL)) {
+		LOG_ERR("SCL3300 context is not initialized");
+		return -EINVAL;
+	}
+
+	ret = scl3300_transport_write(data->ctx, SCL3300_CMD_WHOAMI);
 	if (ret < 0) {
 		LOG_ERR("Failed to send WHOAMI command: %d", ret);
 		return ret;
 	}
 
 	if (cfg->init) {
-		ret = scl3300_spi_write(dev, SCL3300_CMD_WAKEUP);
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_WAKEUP);
 		if (ret < 0) {
 			LOG_ERR("Failed to send WAKEUP command: %d", ret);
 			return ret;
 		}
 
-		ret = scl3300_spi_write(dev, SCL3300_CMD_SW_RESET);
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_SW_RESET);
 		if (ret < 0) {
 			LOG_ERR("Failed to send SW_RESET command: %d", ret);
 			return ret;
@@ -72,7 +78,7 @@ static int scl3300_configure(const struct device *dev, const struct scl3300_conf
 
 		k_msleep(2);
 
-		ret = scl3300_spi_write(dev, SCL3300_CMD_ANG_CTRL);
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_ANG_CTRL);
 		if (ret < 0) {
 			LOG_ERR("Failed to send ANG_CTRL command: %d", ret);
 			return ret;
@@ -80,19 +86,19 @@ static int scl3300_configure(const struct device *dev, const struct scl3300_conf
 
 		k_msleep(25);
 
-		ret = scl3300_spi_write(dev, SCL3300_CMD_STATUS);
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_STATUS);
 		if (ret < 0) {
 			LOG_ERR("Failed to send STATUS command: %d", ret);
 			return ret;
 		}
 
-		ret = scl3300_spi_write(dev, SCL3300_CMD_STATUS);
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_STATUS);
 		if (ret < 0) {
 			LOG_ERR("Failed to send STATUS command: %d", ret);
 			return ret;
 		}
 
-		ret = scl3300_spi_write(dev, SCL3300_CMD_STATUS);
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_STATUS);
 		if (ret < 0) {
 			LOG_ERR("Failed to send STATUS command: %d", ret);
 			return ret;
@@ -101,7 +107,7 @@ static int scl3300_configure(const struct device *dev, const struct scl3300_conf
 
 	/* TODO: Runtime measurement mode configuration. */
 
-	return 0;
+	return ret;
 }
 
 static int scl3300_safely_configure(const struct device *dev, const struct scl3300_config *cfg)
@@ -125,17 +131,23 @@ static int scl3300_init_device(const struct device *dev)
 		return -ENODEV;
 	}
 
+	ret = cfg->bus_init(dev);
+	if (ret < 0) {
+		LOG_ERR("SCL3300 SPI initialization failed: %d", ret);
+		return ret;
+	}
+
 	ret = scl3300_safely_configure(dev, cfg);
 	if (ret < 0) {
 		LOG_ERR("Failed to configure SCL3300: %d", ret);
 		return ret;
 	}
 
-	return 0;
+	return ret;
 }
 
 static DEVICE_API(sensor, scl3300_driver_api) = {
-	.submit = scl3300_submit,
+	.sample_fetch = scl3300_sample_fetch,
 };
 
 DEVICE_DT_INST_DEFINE(0, scl3300_init_device, NULL, &scl3300_data, &scl3300_config, POST_KERNEL,

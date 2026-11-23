@@ -17,9 +17,7 @@
 #include <zephyr/rtio/rtio.h>
 
 #include "scl3300_spi.h"
-
-/* SCL3300 SPI frame size */
-#define SCL3300_FRAME_SIZE 4U
+#include "scl3300_transport.h"
 
 /* SCL3300 commands */
 #define SCL3300_CMD_WHOAMI     0x40000091U
@@ -44,6 +42,8 @@
 struct scl3300_config {
 	const struct rtio_iodev *spi_iodev;
 
+	int (*bus_init)(const struct device *dev);
+
 	/* Initialization sequence configuration */
 	bool init;
 
@@ -58,10 +58,12 @@ struct scl3300_config {
 struct scl3300_data {
 	struct rtio *rtio;
 
-	uint8_t tx_buf[SCL3300_FRAME_SIZE];
-	uint8_t rx_buf[SCL3300_FRAME_SIZE];
+	scl3300_ctx_t *ctx;
+	scl3300_ctx_t ctx_spi;
 
 	const struct device *dev;
 };
+
+int scl3300_spi_init(const struct device *dev);
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_SCL3300_SCL3300_H_ */
