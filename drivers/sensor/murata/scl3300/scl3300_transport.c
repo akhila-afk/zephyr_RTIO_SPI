@@ -1,9 +1,9 @@
 #include <errno.h>
 #include "scl3300_transport.h"
 
-int scl3300_transport_read(const scl3300_ctx_t *ctx, uint32_t command)
+int scl3300_transport_read(const scl3300_ctx_t *ctx, uint32_t command, uint8_t *rx_buf)
 {
-	return scl3300_read_command(ctx, command);
+	return scl3300_read_command(ctx, command, rx_buf);
 }
 int scl3300_transport_write(const scl3300_ctx_t *ctx, uint32_t command)
 {
@@ -23,7 +23,7 @@ int32_t __weak scl3300_write_command(const scl3300_ctx_t *ctx, uint32_t command)
 	return ret;
 }
 
-int32_t __weak scl3300_read_command(const scl3300_ctx_t *ctx, uint32_t command)
+int32_t __weak scl3300_read_command(const scl3300_ctx_t *ctx, uint32_t command, uint8_t *rx_buf)
 {
 	int32_t ret;
 
@@ -31,7 +31,7 @@ int32_t __weak scl3300_read_command(const scl3300_ctx_t *ctx, uint32_t command)
 		return -EINVAL;
 	}
 
-	ret = ctx->read(ctx->handle, command);
+	ret = ctx->read(ctx->handle, command, rx_buf);
 
 	return ret;
 }

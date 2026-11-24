@@ -62,6 +62,10 @@ struct scl3300_data {
 	scl3300_ctx_t ctx_spi;
 
 	const struct device *dev;
+
+	int16_t angle_x;
+	int16_t angle_y;
+	int16_t angle_z;
 };
 
 int scl3300_spi_init(const struct device *dev);

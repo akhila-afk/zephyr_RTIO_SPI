@@ -10,8 +10,6 @@
 
 LOG_MODULE_REGISTER(scl3300_spi, CONFIG_SENSOR_LOG_LEVEL);
 
-#define SCL3300_SPI_FRAME_SIZE 4U
-
 static int scl3300_spi_transceive_sync(const struct device *dev, uint32_t command, uint8_t *rx_buf,
 				       size_t len)
 {
@@ -51,18 +49,14 @@ static int scl3300_spi_transceive_sync(const struct device *dev, uint32_t comman
 	return ret;
 }
 
-int scl3300_spi_read_command(const struct device *dev, uint32_t command)
+int scl3300_spi_read_command(const struct device *dev, uint32_t command, uint8_t *rx_buf)
 {
-	uint8_t rx_buf[SCL3300_SPI_FRAME_SIZE];
-
 	return scl3300_spi_transceive_sync(dev, command, rx_buf, SCL3300_SPI_FRAME_SIZE);
 }
 
 int scl3300_spi_write_command(const struct device *dev, uint32_t command)
 {
 	uint8_t rx_buf[SCL3300_SPI_FRAME_SIZE];
-
-	LOG_INF("Submitting SPI command: 0x%08x", command);
 
 	return scl3300_spi_transceive_sync(dev, command, rx_buf, SCL3300_SPI_FRAME_SIZE);
 }

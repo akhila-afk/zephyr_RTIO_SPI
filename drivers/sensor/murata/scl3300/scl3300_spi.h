@@ -10,6 +10,8 @@
 
 #include "scl3300.h"
 
+#define SCL3300_SPI_FRAME_SIZE 4U
+
 /**
  * @brief Submit an asynchronous SPI write transaction.
  *
@@ -29,6 +31,6 @@ int scl3300_spi_write_command(const struct device *dev, uint32_t command);
  *
  * @return 0 on successful submission, or a negative error code.
  */
-int scl3300_spi_read_command(const struct device *dev, uint32_t command);
+int scl3300_spi_read_command(const struct device *dev, uint32_t command, uint8_t *rx_buf);
 
 #endif /* ZEPHYR_DRIVERS_SENSOR_SCL3300_SCL3300_SPI_H_ */

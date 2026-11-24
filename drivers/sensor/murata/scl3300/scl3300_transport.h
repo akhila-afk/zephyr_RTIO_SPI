@@ -6,7 +6,7 @@
 
 typedef int (*scl3300_write_ptr)(void *handle, uint32_t command);
 
-typedef int (*scl3300_read_ptr)(const struct device *dev, uint32_t command);
+typedef int (*scl3300_read_ptr)(const struct device *dev, uint32_t command, uint8_t *rx_buf);
 
 typedef struct {
 	scl3300_write_ptr write;
@@ -14,11 +14,11 @@ typedef struct {
 	void *handle;
 } scl3300_ctx_t;
 
-int scl3300_transport_read(const scl3300_ctx_t *ctx, uint32_t command);
+int scl3300_transport_read(const scl3300_ctx_t *ctx, uint32_t command, uint8_t *rx_buf);
 
 int scl3300_transport_write(const scl3300_ctx_t *ctx, uint32_t command);
 
 int32_t scl3300_write_command(const scl3300_ctx_t *ctx, uint32_t command);
-int32_t scl3300_read_command(const scl3300_ctx_t *ctx, uint32_t command);
+int32_t scl3300_read_command(const scl3300_ctx_t *ctx, uint32_t command, uint8_t *rx_buf);
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_SENSOR_SCL3300_H_ */
