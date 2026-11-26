@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 SacraSystems
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef ZEPHYR_DRIVERS_SENSOR_SCL3300_SCL3300_SPI_H_
 #define ZEPHYR_DRIVERS_SENSOR_SCL3300_SCL3300_SPI_H_

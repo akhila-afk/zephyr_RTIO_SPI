@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 SacraSystems
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <errno.h>
 #include "scl3300_transport.h"
 
