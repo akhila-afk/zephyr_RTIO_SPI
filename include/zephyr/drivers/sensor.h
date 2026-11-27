@@ -1,8 +1,8 @@
 /*
-* Copyright (c) 2016 Intel Corporation
-*
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * Copyright (c) 2016 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef ZEPHYR_INCLUDE_DRIVERS_SENSOR_H_
 #define ZEPHYR_INCLUDE_DRIVERS_SENSOR_H_
 
@@ -80,6 +80,17 @@ enum sensor_channel {
 	SENSOR_CHAN_GYRO_Z,
 	/** Angular velocity around the X, Y and Z axes. */
 	SENSOR_CHAN_GYRO_XYZ,
+	/** Inclination angle on the X axis, in degrees. */
+	SENSOR_CHAN_INCLINATION_X,
+
+	/** Inclination angle on the Y axis, in degrees. */
+	SENSOR_CHAN_INCLINATION_Y,
+
+	/** Inclination angle on the Z axis, in degrees. */
+	SENSOR_CHAN_INCLINATION_Z,
+
+	/** Inclination angles on the X, Y, and Z axes, in degrees. */
+	SENSOR_CHAN_INCLINATION_XYZ,
 	/** Magnetic field on the X axis, in G. */
 	SENSOR_CHAN_MAGN_X,
 	/** Magnetic field on the Y axis, in G. */
@@ -268,7 +279,8 @@ enum sensor_channel {
  */
 #define SENSOR_CHANNEL_3_AXIS(chan)                                                                \
 	((chan) == SENSOR_CHAN_ACCEL_XYZ || (chan) == SENSOR_CHAN_GYRO_XYZ ||                      \
-	 (chan) == SENSOR_CHAN_MAGN_XYZ || (chan) == SENSOR_CHAN_POS_DXYZ)
+	 (chan) == SENSOR_CHAN_MAGN_XYZ || (chan) == SENSOR_CHAN_POS_DXYZ ||                       \
+	 (chan) == SENSOR_CHAN_INCLINATION_XYZ)
 
 /**
  * @brief checks if a given channel is an Accelerometer
@@ -278,8 +290,8 @@ enum sensor_channel {
  *         @ref SENSOR_CHAN_ACCEL_Y, or @ref SENSOR_CHAN_ACCEL_Z
  * @retval false otherwise
  */
-#define SENSOR_CHANNEL_IS_ACCEL(chan)                                          \
-	((chan) == SENSOR_CHAN_ACCEL_XYZ || (chan) == SENSOR_CHAN_ACCEL_X ||   \
+#define SENSOR_CHANNEL_IS_ACCEL(chan)                                                              \
+	((chan) == SENSOR_CHAN_ACCEL_XYZ || (chan) == SENSOR_CHAN_ACCEL_X ||                       \
 	 (chan) == SENSOR_CHAN_ACCEL_Y || (chan) == SENSOR_CHAN_ACCEL_Z)
 
 /**
@@ -290,9 +302,22 @@ enum sensor_channel {
  *         @ref SENSOR_CHAN_GYRO_Y, or @ref SENSOR_CHAN_GYRO_Z
  * @retval false otherwise
  */
-#define SENSOR_CHANNEL_IS_GYRO(chan)                                           \
-	((chan) == SENSOR_CHAN_GYRO_XYZ || (chan) == SENSOR_CHAN_GYRO_X ||     \
+#define SENSOR_CHANNEL_IS_GYRO(chan)                                                               \
+	((chan) == SENSOR_CHAN_GYRO_XYZ || (chan) == SENSOR_CHAN_GYRO_X ||                         \
 	 (chan) == SENSOR_CHAN_GYRO_Y || (chan) == SENSOR_CHAN_GYRO_Z)
+
+/**
+ * @brief Checks if a given channel is an inclination measurement.
+ *
+ * @param[in] chan The channel to check
+ * @retval true if @p chan is any of @ref SENSOR_CHAN_INCLINATION_XYZ,
+ *         @ref SENSOR_CHAN_INCLINATION_X, @ref SENSOR_CHAN_INCLINATION_Y,
+ *         or @ref SENSOR_CHAN_INCLINATION_Z
+ * @retval false otherwise
+ */
+#define SENSOR_CHANNEL_IS_INCLINATION(chan)                                                        \
+	((chan) == SENSOR_CHAN_INCLINATION_XYZ || (chan) == SENSOR_CHAN_INCLINATION_X ||           \
+	 (chan) == SENSOR_CHAN_INCLINATION_Y || (chan) == SENSOR_CHAN_INCLINATION_Z)
 
 /**
  * @brief Sensor trigger types.
@@ -438,8 +463,12 @@ enum sensor_attribute {
 	/** Chip ID of a sensor */
 	SENSOR_ATTR_CHIP_ID,
 	/**
-	 * Number of all common sensor attributes.
+	 * Sensor measurement mode.
+	 *
+	 * Selects the operating mode of the sensor, which may configure
+	 * measurement behavior, resolution, and power consumption.
 	 */
+	SENSOR_ATTR_MEASUREMENT_MODE,
 	SENSOR_ATTR_COMMON_COUNT,
 
 	/**
@@ -472,41 +501,34 @@ typedef void (*sensor_trigger_handler_t)(const struct device *dev,
  * @brief Callback API to set a sensor attribute.
  * See sensor_attr_set() for argument description
  */
-typedef int (*sensor_attr_set_t)(const struct device *dev,
-				 enum sensor_channel chan,
-				 enum sensor_attribute attr,
-				 const struct sensor_value *val);
+typedef int (*sensor_attr_set_t)(const struct device *dev, enum sensor_channel chan,
+				 enum sensor_attribute attr, const struct sensor_value *val);
 
 /**
  * @brief Callback API to get a sensor attribute.
  * See sensor_attr_get() for argument description
  */
-typedef int (*sensor_attr_get_t)(const struct device *dev,
-				 enum sensor_channel chan,
-				 enum sensor_attribute attr,
-				 struct sensor_value *val);
+typedef int (*sensor_attr_get_t)(const struct device *dev, enum sensor_channel chan,
+				 enum sensor_attribute attr, struct sensor_value *val);
 
 /**
  * @brief Callback API to set a sensor trigger and handler.
  * See sensor_trigger_set() for argument description
  */
-typedef int (*sensor_trigger_set_t)(const struct device *dev,
-				    const struct sensor_trigger *trig,
+typedef int (*sensor_trigger_set_t)(const struct device *dev, const struct sensor_trigger *trig,
 				    sensor_trigger_handler_t handler);
 
 /**
  * @brief Callback API to fetch a sensor sample into the driver buffer.
  * See sensor_sample_fetch_chan() for argument description
  */
-typedef int (*sensor_sample_fetch_t)(const struct device *dev,
-				     enum sensor_channel chan);
+typedef int (*sensor_sample_fetch_t)(const struct device *dev, enum sensor_channel chan);
 
 /**
  * @brief Callback API to read a sensor channel from the driver buffer.
  * See sensor_channel_get() for argument description
  */
-typedef int (*sensor_channel_get_t)(const struct device *dev,
-				    enum sensor_channel chan,
+typedef int (*sensor_channel_get_t)(const struct device *dev, enum sensor_channel chan,
 				    struct sensor_value *val);
 
 /* Forward declaration */
@@ -597,7 +619,7 @@ static inline bool sensor_chan_spec_eq(struct sensor_chan_spec chan_spec0,
 				       struct sensor_chan_spec chan_spec1)
 {
 	return chan_spec0.chan_type == chan_spec1.chan_type &&
-		chan_spec0.chan_idx == chan_spec1.chan_idx;
+	       chan_spec0.chan_idx == chan_spec1.chan_idx;
 }
 
 /**
@@ -749,7 +771,8 @@ struct sensor_stream_trigger {
 
 #define SENSOR_STREAM_TRIGGER_PREP(_trigger, _opt)                                                 \
 	{                                                                                          \
-		.trigger = (_trigger), .opt = (_opt),                                              \
+		.trigger = (_trigger),                                                             \
+		.opt = (_opt),                                                                     \
 	}
 
 /*
@@ -841,15 +864,11 @@ extern const struct rtio_iodev_api __sensor_iodev_api;
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_attr_set(const struct device *dev,
-			      enum sensor_channel chan,
-			      enum sensor_attribute attr,
-			      const struct sensor_value *val);
+__syscall int sensor_attr_set(const struct device *dev, enum sensor_channel chan,
+			      enum sensor_attribute attr, const struct sensor_value *val);
 
-static inline int z_impl_sensor_attr_set(const struct device *dev,
-					 enum sensor_channel chan,
-					 enum sensor_attribute attr,
-					 const struct sensor_value *val)
+static inline int z_impl_sensor_attr_set(const struct device *dev, enum sensor_channel chan,
+					 enum sensor_attribute attr, const struct sensor_value *val)
 {
 	const struct sensor_driver_api *api = DEVICE_API_GET(sensor, dev);
 
@@ -872,15 +891,11 @@ static inline int z_impl_sensor_attr_set(const struct device *dev,
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_attr_get(const struct device *dev,
-			      enum sensor_channel chan,
-			      enum sensor_attribute attr,
-			      struct sensor_value *val);
+__syscall int sensor_attr_get(const struct device *dev, enum sensor_channel chan,
+			      enum sensor_attribute attr, struct sensor_value *val);
 
-static inline int z_impl_sensor_attr_get(const struct device *dev,
-					 enum sensor_channel chan,
-					 enum sensor_attribute attr,
-					 struct sensor_value *val)
+static inline int z_impl_sensor_attr_get(const struct device *dev, enum sensor_channel chan,
+					 enum sensor_attribute attr, struct sensor_value *val)
 {
 	const struct sensor_driver_api *api = DEVICE_API_GET(sensor, dev);
 
@@ -913,8 +928,7 @@ static inline int z_impl_sensor_attr_get(const struct device *dev,
  *
  * @return 0 if successful, negative errno code if failure.
  */
-static inline int sensor_trigger_set(const struct device *dev,
-				     const struct sensor_trigger *trig,
+static inline int sensor_trigger_set(const struct device *dev, const struct sensor_trigger *trig,
 				     sensor_trigger_handler_t handler)
 {
 	const struct sensor_driver_api *api = DEVICE_API_GET(sensor, dev);
@@ -972,8 +986,7 @@ static inline int z_impl_sensor_sample_fetch(const struct device *dev)
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_sample_fetch_chan(const struct device *dev,
-				       enum sensor_channel type);
+__syscall int sensor_sample_fetch_chan(const struct device *dev, enum sensor_channel type);
 
 static inline int z_impl_sensor_sample_fetch_chan(const struct device *dev,
 						  enum sensor_channel type)
@@ -1002,12 +1015,10 @@ static inline int z_impl_sensor_sample_fetch_chan(const struct device *dev,
  *
  * @return 0 if successful, negative errno code if failure.
  */
-__syscall int sensor_channel_get(const struct device *dev,
-				 enum sensor_channel chan,
+__syscall int sensor_channel_get(const struct device *dev, enum sensor_channel chan,
 				 struct sensor_value *val);
 
-static inline int z_impl_sensor_channel_get(const struct device *dev,
-					    enum sensor_channel chan,
+static inline int z_impl_sensor_channel_get(const struct device *dev, enum sensor_channel chan,
 					    struct sensor_value *val)
 {
 	return DEVICE_API_GET(sensor, dev)->channel_get(dev, chan, val);
@@ -1235,12 +1246,12 @@ void sensor_processing_with_callback(struct rtio *ctx, sensor_processing_callbac
 /**
  * @brief The value of gravitational constant in micro m/s^2.
  */
-#define SENSOR_G		9806650LL
+#define SENSOR_G 9806650LL
 
 /**
  * @brief The value of constant PI in micros.
  */
-#define SENSOR_PI		3141592LL
+#define SENSOR_PI 3141592LL
 
 /**
  * @brief Helper function to convert acceleration from m/s^2 to Gs
@@ -1540,27 +1551,24 @@ struct sensor_info {
 	const char *friendly_name;
 };
 
-#define SENSOR_INFO_INITIALIZER(_dev, _vendor, _model, _friendly_name)	\
-	{								\
-		.dev = _dev,						\
-		.vendor = _vendor,					\
-		.model = _model,					\
-		.friendly_name = _friendly_name,			\
+#define SENSOR_INFO_INITIALIZER(_dev, _vendor, _model, _friendly_name)                             \
+	{                                                                                          \
+		.dev = _dev,                                                                       \
+		.vendor = _vendor,                                                                 \
+		.model = _model,                                                                   \
+		.friendly_name = _friendly_name,                                                   \
 	}
 
-#define SENSOR_INFO_DEFINE(name, ...)					\
-	static const STRUCT_SECTION_ITERABLE(sensor_info, name) =	\
+#define SENSOR_INFO_DEFINE(name, ...)                                                              \
+	static const STRUCT_SECTION_ITERABLE(sensor_info, name) =                                  \
 		SENSOR_INFO_INITIALIZER(__VA_ARGS__)
 
-#define SENSOR_INFO_DT_NAME(node_id)					\
-	_CONCAT(__sensor_info, DEVICE_DT_NAME_GET(node_id))
+#define SENSOR_INFO_DT_NAME(node_id) _CONCAT(__sensor_info, DEVICE_DT_NAME_GET(node_id))
 
-#define SENSOR_INFO_DT_DEFINE(node_id)					\
-	SENSOR_INFO_DEFINE(SENSOR_INFO_DT_NAME(node_id),		\
-			   DEVICE_DT_GET(node_id),			\
-			   DT_NODE_VENDOR_OR(node_id, NULL),		\
-			   DT_NODE_MODEL_OR(node_id, NULL),		\
-			   DT_PROP_OR(node_id, friendly_name, NULL))	\
+#define SENSOR_INFO_DT_DEFINE(node_id)                                                             \
+	SENSOR_INFO_DEFINE(SENSOR_INFO_DT_NAME(node_id), DEVICE_DT_GET(node_id),                   \
+			   DT_NODE_VENDOR_OR(node_id, NULL), DT_NODE_MODEL_OR(node_id, NULL),      \
+			   DT_PROP_OR(node_id, friendly_name, NULL))
 
 #else
 
@@ -1596,13 +1604,11 @@ struct sensor_info {
  * @param api_ptr Provides an initial pointer to the API function struct used
  * by the driver. Can be NULL.
  */
-#define SENSOR_DEVICE_DT_DEFINE(node_id, init_fn, pm_device,		\
-				data_ptr, cfg_ptr, level, prio,		\
-				api_ptr, ...)				\
-	DEVICE_DT_DEFINE(node_id, init_fn, pm_device,			\
-			 data_ptr, cfg_ptr, level, prio,		\
-			 api_ptr, __VA_ARGS__);				\
-									\
+#define SENSOR_DEVICE_DT_DEFINE(node_id, init_fn, pm_device, data_ptr, cfg_ptr, level, prio,       \
+				api_ptr, ...)                                                      \
+	DEVICE_DT_DEFINE(node_id, init_fn, pm_device, data_ptr, cfg_ptr, level, prio, api_ptr,     \
+			 __VA_ARGS__);                                                             \
+                                                                                                   \
 	SENSOR_INFO_DT_DEFINE(node_id);
 
 /**
@@ -1614,7 +1620,7 @@ struct sensor_info {
  *
  * @param ... other parameters as expected by SENSOR_DEVICE_DT_DEFINE().
  */
-#define SENSOR_DEVICE_DT_INST_DEFINE(inst, ...)				\
+#define SENSOR_DEVICE_DT_INST_DEFINE(inst, ...)                                                    \
 	SENSOR_DEVICE_DT_DEFINE(DT_DRV_INST(inst), __VA_ARGS__)
 
 /**
@@ -1671,7 +1677,7 @@ static inline int64_t sensor_value_to_micro(const struct sensor_value *val)
 static inline int sensor_value_from_milli(struct sensor_value *val, int64_t milli)
 {
 	if (milli < ((int64_t)INT32_MIN - 1) * 1000LL ||
-			milli > ((int64_t)INT32_MAX + 1) * 1000LL) {
+	    milli > ((int64_t)INT32_MAX + 1) * 1000LL) {
 		return -ERANGE;
 	}
 
@@ -1691,7 +1697,7 @@ static inline int sensor_value_from_milli(struct sensor_value *val, int64_t mill
 static inline int sensor_value_from_micro(struct sensor_value *val, int64_t micro)
 {
 	if (micro < ((int64_t)INT32_MIN - 1) * 1000000LL ||
-			micro > ((int64_t)INT32_MAX + 1) * 1000000LL) {
+	    micro > ((int64_t)INT32_MAX + 1) * 1000000LL) {
 		return -ERANGE;
 	}
 
