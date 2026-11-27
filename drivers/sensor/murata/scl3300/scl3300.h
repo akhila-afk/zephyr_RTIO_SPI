@@ -54,12 +54,6 @@ struct scl3300_config {
 
 	/* Initialization sequence configuration */
 	bool init;
-
-	/* Measurement configuration */
-	uint32_t mode;
-
-	/* Register bank configuration */
-	uint8_t initial_bank;
 };
 
 /* SCL3300 runtime data */

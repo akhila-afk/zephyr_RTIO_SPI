@@ -14,25 +14,6 @@
 
 LOG_MODULE_REGISTER(scl3300, CONFIG_SENSOR_LOG_LEVEL);
 
-SPI_DT_IODEV_DEFINE(scl3300_spi_iodev, DT_DRV_INST(0), SPI_WORD_SET(8) | SPI_TRANSFER_MSB);
-
-static const struct scl3300_config scl3300_config = {
-	.spi_iodev = &scl3300_spi_iodev,
-	.bus_init = scl3300_spi_init,
-	.init = DT_INST_PROP_OR(0, init, 0),
-};
-
-RTIO_DEFINE_WITH_MEMPOOL(scl3300_rtio, 2, /* Submission queue depth */
-			 2,               /* Completion queue depth */
-			 2,               /* Number of memory blocks */
-			 256,             /* Memory block size */
-			 sizeof(void *)   /* Memory block alignment */
-);
-
-static struct scl3300_data scl3300_data = {
-	.rtio = &scl3300_rtio,
-};
-
 static uint8_t scl3300_crc8_update(uint8_t bit_val, uint8_t crc)
 {
 	crc ^= bit_val;
@@ -284,8 +265,6 @@ static int scl3300_configure(const struct device *dev, const struct scl3300_conf
 		}
 	}
 
-	/* TODO: Runtime measurement mode configuration. */
-
 	return ret;
 }
 
@@ -294,8 +273,6 @@ static int scl3300_safely_configure(const struct device *dev, const struct scl33
 	if ((dev == NULL) || (cfg == NULL) || (dev->config == NULL)) {
 		return -EINVAL;
 	}
-
-	/* TODO: Perform validation and backup. */
 
 	return scl3300_configure(dev, cfg);
 }
@@ -331,5 +308,25 @@ static DEVICE_API(sensor, scl3300_driver_api) = {
 	.attr_set = scl3300_attr_set,
 };
 
-DEVICE_DT_INST_DEFINE(0, scl3300_init_device, NULL, &scl3300_data, &scl3300_config, POST_KERNEL,
-		      CONFIG_SENSOR_INIT_PRIORITY, &scl3300_driver_api);
+#define SCL3300_DEFINE(inst)                                                                       \
+	SPI_DT_IODEV_DEFINE(scl3300_spi_iodev_##inst, DT_DRV_INST(inst),                           \
+			    SPI_WORD_SET(8) | SPI_TRANSFER_MSB);                                   \
+	RTIO_DEFINE_WITH_MEMPOOL(scl3300_rtio_##inst, 2, /* Submission queue depth */              \
+				 2,                      /* Completion queue depth */              \
+				 2,                      /* Number of memory blocks */             \
+				 256,                    /* Memory block size */                   \
+				 sizeof(void *)          /* Memory block alignment */              \
+	);                                                                                         \
+	static struct scl3300_data scl3300_data_##inst = {                                         \
+		.rtio = &scl3300_rtio_##inst,                                                      \
+	};                                                                                         \
+	static const struct scl3300_config scl3300_config_##inst = {                               \
+		.spi_iodev = &scl3300_spi_iodev_##inst,                                            \
+		.bus_init = scl3300_spi_init,                                                      \
+		.init = DT_INST_PROP_OR(inst, init, 0),                                            \
+	};                                                                                         \
+	DEVICE_DT_INST_DEFINE(inst, scl3300_init_device, NULL, &scl3300_data_##inst,               \
+			      &scl3300_config_##inst, POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,    \
+			      &scl3300_driver_api);
+
+DT_INST_FOREACH_STATUS_OKAY(SCL3300_DEFINE)

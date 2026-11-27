@@ -1,6 +1,7 @@
-# Murata SCL3300 3-axis inclinometer sensor driver
+# Copyright (c) 2026 Sacra Systems
 #
 # SPDX-License-Identifier: Apache-2.0
 
-add_subdirectory(scl3300)
+# Murata SCL3300 3-axis inclinometer sensor driver
 
+add_subdirectory(scl3300)
