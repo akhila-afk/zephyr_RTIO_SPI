@@ -210,25 +210,27 @@ static int scl3300_attr_set(const struct device *dev, enum sensor_channel chan,
 static int scl3300_configure(const struct device *dev, const struct scl3300_config *cfg)
 {
 	struct scl3300_data *data = dev->data;
-	int ret;
+	int ret = 0;
 
 	if ((data == NULL) || (data->ctx == NULL)) {
 		LOG_ERR("SCL3300 context is not initialized");
 		return -EINVAL;
 	}
 
-	ret = scl3300_transport_write(data->ctx, SCL3300_CMD_WHOAMI);
-	if (ret < 0) {
-		LOG_ERR("Failed to send WHOAMI command: %d", ret);
-		return ret;
-	}
-
 	if (cfg->init) {
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_WHOAMI);
+		if (ret < 0) {
+			LOG_ERR("Failed to send WHOAMI command: %d", ret);
+			return ret;
+		}
+
 		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_WAKEUP);
 		if (ret < 0) {
 			LOG_ERR("Failed to send WAKEUP command: %d", ret);
 			return ret;
 		}
+
+		k_msleep(2);
 
 		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_SW_RESET);
 		if (ret < 0) {
@@ -237,6 +239,12 @@ static int scl3300_configure(const struct device *dev, const struct scl3300_conf
 		}
 
 		k_msleep(2);
+
+		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_MODE1);
+		if (ret < 0) {
+			LOG_ERR("Failed to send ANG_CTRL command: %d", ret);
+			return ret;
+		}
 
 		ret = scl3300_transport_write(data->ctx, SCL3300_CMD_ANGLE_CTRL);
 		if (ret < 0) {
@@ -280,7 +288,7 @@ static int scl3300_safely_configure(const struct device *dev, const struct scl33
 static int scl3300_init_device(const struct device *dev)
 {
 	const struct scl3300_config *cfg = dev->config;
-	int ret;
+	int ret = 0;
 
 	if (!spi_is_ready_iodev(cfg->spi_iodev)) {
 		LOG_ERR("SCL3300 SPI bus is not ready");
